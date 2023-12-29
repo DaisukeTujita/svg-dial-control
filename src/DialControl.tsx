@@ -1,10 +1,9 @@
-import React, { type ReactNode, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
 
 var totalRotateValue = 0;
 export type DialControlProps = {
-  children: ReactNode;
   dialColor?: string;
   dialOutLineColor?: string;
   dialSize?: number;
@@ -19,7 +18,6 @@ export const DialControl: React.FC<DialControlProps> = (
   props: DialControlProps
 ) => {
   const {
-    children,
     dialColor = '#222222',
     dialOutLineColor = '#999999',
     dialSize = 200,
