@@ -18,10 +18,10 @@ export const DialControl: React.FC<DialControlProps> = (
   props: DialControlProps
 ) => {
   const {
-    dialColor = '#222222',
+    dialColor = '#aaaaaa',
     dialOutLineColor = '#999999',
     dialSize = 200,
-    pointMark = 'circle',
+    pointMark = 'triangle',
     snapToTicks = false,
     tickFontSize = 6,
     tickPosition = 'outside',
@@ -55,62 +55,57 @@ export const DialControl: React.FC<DialControlProps> = (
       if (previousMoveY !== null && previousMoveX !== null) {
         const diffX = moveX - previousMoveX;
         const diffY = moveY - ajustGestureStateY - previousMoveY;
+
+        // 移動開始位置
+        let isUpsideAreaStart = previousMoveY < componenHeight / 2;
+        let isLeftsideAreaStart = previousMoveX < componentWidth / 2;
+        // 移動の向き
+        let isMoveRight = diffX > 0;
+        let isMoveDown = diffY > 0;
+        // 移動量
         const powerX = diffX * diffX;
         const powerY = diffY * diffY;
-
-        let directionX = diffX < 0 ? 'leftDirection' : 'rightDirection';
-        let directionY = diffY < 0 ? 'upDirection' : 'downDirection';
-        let startX =
-          previousMoveX < componentWidth / 2 ? 'leftStart' : 'rightStart';
-        let startY =
-          previousMoveY < componenHeight / 2 ? 'topStart' : 'bottomStart';
-        let turnDirection = '';
-
         const distance = Math.sqrt(powerX + powerY);
         var rotationAmount = distance / 1.15; // 調整可能な移動距離に応じて調整
 
-        if (startX == 'leftStart' && startY == 'topStart') {
-          if (powerX > powerY) {
-            if (directionX == 'rightDirection') turnDirection = 'rightTurn';
-            if (directionX == 'leftDirection') turnDirection = 'leftTurn';
+        // 回転の方向（移動の位置と移動の向きから決定）
+        let isRightTurn = true;
+        if (isUpsideAreaStart) {
+          if (isLeftsideAreaStart) {
+            powerX > powerY
+              ? (isRightTurn = isMoveRight)
+              : (isRightTurn = !isMoveDown);
           } else {
-            if (directionY == 'downDirection') turnDirection = 'leftTurn';
-            if (directionY == 'upDirection') turnDirection = 'rightTurn';
+            powerX > powerY
+              ? (isRightTurn = isMoveRight)
+              : (isRightTurn = isMoveDown);
           }
-        } else if (startX == 'rightStart' && startY == 'topStart') {
-          if (powerX > powerY) {
-            if (directionX == 'leftDirection') turnDirection = 'leftTurn';
-            if (directionX == 'rightDirection') turnDirection = 'rightTurn';
+        } else {
+          if (isLeftsideAreaStart) {
+            powerX > powerY
+              ? (isRightTurn = !isMoveRight)
+              : (isRightTurn = !isMoveDown);
           } else {
-            if (directionY == 'downDirection') turnDirection = 'rightTurn';
-            if (directionY == 'upDirection') turnDirection = 'leftTurn';
+            powerX > powerY
+              ? (isRightTurn = !isMoveRight)
+              : (isRightTurn = isMoveDown);
           }
-        } else if (startX == 'leftStart' && startY == 'bottomStart') {
-          if (powerX > powerY) {
-            if (directionX == 'rightDirection') turnDirection = 'leftTurn';
-            if (directionX == 'leftDirection') turnDirection = 'rightTurn';
-          } else {
-            if (directionY == 'upDirection') turnDirection = 'rightTurn';
-            if (directionY == 'downDirection') turnDirection = 'leftTurn';
-          }
-        } else if (startX == 'rightStart' && startY == 'bottom') {
-          if (powerX > powerY) {
-            if (directionX == 'leftDirection') turnDirection = 'rightTurn';
-            if (directionX == 'rightDirection') turnDirection = 'leftTurn';
-          } else {
-            if (directionY == 'upDirection') turnDirection = 'leftTurn';
-            if (directionY == 'downDirection') turnDirection = 'rightTurn';
-          }
-        }
-        if (turnDirection == 'leftTurn') {
-          totalRotateValue = totalRotateValue - rotationAmount;
-          if (totalRotateValue < 0) totalRotateValue = totalRotateValue + 360;
-        } else if (turnDirection == 'rightTurn') {
-          totalRotateValue = totalRotateValue + rotationAmount;
-          if (totalRotateValue >= 360)
-            totalRotateValue = totalRotateValue - 360;
         }
 
+        // 360度を超えたら0に戻す、0度を下回ったら360度足す
+        if (isRightTurn) {
+          totalRotateValue = totalRotateValue + rotationAmount;
+          if (totalRotateValue >= 360) {
+            totalRotateValue = totalRotateValue - 360;
+          }
+        } else {
+          totalRotateValue = totalRotateValue - rotationAmount;
+          if (totalRotateValue < 0) {
+            totalRotateValue = totalRotateValue + 360;
+          }
+        }
+
+        // 目盛り位置にsnapさせる
         if (snapToTicks) {
           totalRotateValue = Math.round(totalRotateValue / 10) * 10;
         }
