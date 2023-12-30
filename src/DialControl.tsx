@@ -35,29 +35,34 @@ export const DialControl: React.FC<DialControlProps> = (
   const [previousMoveY, setPreviousMoveY] = useState<number | null>(null);
   const [previousMoveX, setPreviousMoveX] = useState<number | null>(null);
   const [componentWidth, setComponentWidth] = useState(0);
-  const [componenHeight, setComponentHeight] = useState(0);
-  const ajustGestureStateY = dialSize / 2;
+  const [componentHeight, setComponentHeight] = useState(0);
+  const [componentX, setComponentX] = useState(0);
+  const [componentY, setComponentY] = useState(0);
   const tickRadius = (dialSize - 40) / 2; // 目盛りの位置の半径
   const tickLength = 8; // 目盛りの長さ
   const center = dialSize / 2; // 円の中心座標
   const pointSize = 6;
 
   const onLayout = (event: any) => {
-    const { height, width } = event.nativeEvent.layout;
+    const { height, width, x, y } = event.nativeEvent.layout;
     setComponentWidth(width);
     setComponentHeight(height);
+    setComponentX(x);
+    setComponentY(y);
   };
 
   const panResponder = PanResponder.create({
     onPanResponderMove: (_event, gestureState) => {
       const { moveX, moveY } = gestureState;
+      const componetMoveX = moveX - componentX;
+      const componetMoveY = moveY - componentY;
 
       if (previousMoveY !== null && previousMoveX !== null) {
-        const diffX = moveX - previousMoveX;
-        const diffY = moveY - ajustGestureStateY - previousMoveY;
+        const diffX = componetMoveX - previousMoveX;
+        const diffY = componetMoveY - previousMoveY;
 
         // 移動開始位置
-        let isUpsideAreaStart = previousMoveY < componenHeight / 2;
+        let isUpsideAreaStart = previousMoveY < componentHeight / 2;
         let isLeftsideAreaStart = previousMoveX < componentWidth / 2;
         // 移動の向き
         let isMoveRight = diffX > 0;
@@ -105,24 +110,28 @@ export const DialControl: React.FC<DialControlProps> = (
           }
         }
 
-        // 目盛り位置にsnapさせる
-        if (snapToTicks) {
-          totalRotateValue = Math.round(totalRotateValue / 10) * 10;
-        }
         Animated.timing(rotateValue, {
           duration: 0,
-          toValue: totalRotateValue,
+          toValue: snapToTicks
+            ? Math.round(totalRotateValue / 10) * 10
+            : totalRotateValue,
           useNativeDriver: true,
         }).start();
       }
 
-      setPreviousMoveY(moveY - ajustGestureStateY);
-      setPreviousMoveX(moveX);
+      setPreviousMoveY(componetMoveY);
+      setPreviousMoveX(componetMoveX);
     },
+
     onPanResponderRelease: () => {
       setPreviousMoveY(null);
       setPreviousMoveX(null);
-      props.onChange && props.onChange(totalRotateValue);
+      props.onChange &&
+        props.onChange(
+          snapToTicks
+            ? Math.round(totalRotateValue / 10) * 10
+            : totalRotateValue
+        );
     },
     onStartShouldSetPanResponder: () => true,
   });
@@ -181,7 +190,7 @@ export const DialControl: React.FC<DialControlProps> = (
         <SvgText
           key={angle}
           x={x}
-          y={y}
+          y={y + 2}
           fill="black"
           textAnchor="middle"
           fontSize={tickFontSize}
@@ -193,7 +202,11 @@ export const DialControl: React.FC<DialControlProps> = (
     return labels;
   }, [center, tickFontSize, tickPosition, tickRadius]);
 
-  const trianglePoints = '100, 20, 105,30 95,30';
+  //const trianglePoints = "100, 20, 105,30 95,30";
+  const tipY = center - tickRadius;
+  const trianglePoints = `${center}, ${tipY}, ${center + 5},${tipY + 10}  ${
+    center - 5
+  },${tipY + 10}`;
   return (
     <View
       style={styles.container}
@@ -211,12 +224,7 @@ export const DialControl: React.FC<DialControlProps> = (
             <Polygon points={trianglePoints} fill="black" />
           )}
           {pointMark == 'circle' && (
-            <Circle
-              cx={center}
-              cy={center / 2 - 15}
-              r={pointSize}
-              fill="black"
-            />
+            <Circle cx={center} cy={tipY + 15} r={pointSize} fill="black" />
           )}
         </Svg>
       </Animated.View>
@@ -241,9 +249,8 @@ export const DialControl: React.FC<DialControlProps> = (
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
   },
   dial: {
     position: 'absolute',
