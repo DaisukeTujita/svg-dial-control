@@ -47,12 +47,20 @@ export default MyComponent;
 The DialControl component accepts the following props:
 
 - dialColor (string): Color of the dial (default: "#aaaaaa")
-- dialOutLineColor (string): Color of the outer line of the dial (default: "#999999")
+- dialOutLineColor (string): Color of the outer line of the dial (default: "#dddddd")
 - dialSize (number): Size of the dial (default: 200)
-- onChange (function): Callback triggered when the dial value changes
+- onChange (function): Callback triggered on dial value change
+- onRelease (function): Callback triggered on dial release
 - pointMark ("triangle" | "circle"): Shape of the point marker on the dial (default: "triangle")
 - snapToTicks (boolean): Whether the dial snaps to ticks (default: false)
-- tickFontSize (number): Font size of the ticks (default: 6)
-- tickPosition ("inside" | "outside"): Position of the ticks (default: "outside")
+- tickPosition ("inside" | "outside"): Position of ticks (default: "inside")
+- tickStartAngle (number): Starting angle for ticks (default: 0)
+- tickEndAngle (number): Ending angle for ticks (default: 360)
+- tickStep (number): Step size between ticks (default: 10)
+- tickColor (string): Color of ticks (default: "#000000")
+- tickLineLength (number): Length of tick lines (default: 8)
+- tickLabel (boolean): Whether to display tick labels (default: true)
+- tickLabelList (string[]): List of tick label strings (default: [])
+- tickLabelFontSize (number): Font size of tick labels (default: 6)
 
 Use these props to customize the appearance and behavior of the dial according to your requirements.

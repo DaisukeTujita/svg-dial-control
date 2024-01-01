@@ -8,10 +8,18 @@ export type DialControlProps = {
   dialOutLineColor?: string;
   dialSize?: number;
   onChange?: (rotateValue: number) => void;
+  onRelease?: (rotateValue: number) => void;
   pointMark?: 'triangle' | 'circle';
   snapToTicks?: boolean;
-  tickFontSize?: number;
   tickPosition?: 'inside' | 'outside';
+  tickStartAngle?: number;
+  tickEndAngle?: number;
+  tickStep?: number;
+  tickColor?: string;
+  tickLineLength?: number;
+  tickLabel?: boolean;
+  tickLabelList?: string[];
+  tickLabelFontSize?: number;
 };
 
 export const DialControl: React.FC<DialControlProps> = (
@@ -19,12 +27,19 @@ export const DialControl: React.FC<DialControlProps> = (
 ) => {
   const {
     dialColor = '#aaaaaa',
-    dialOutLineColor = '#999999',
+    dialOutLineColor = '#dddddd',
     dialSize = 200,
     pointMark = 'triangle',
     snapToTicks = false,
-    tickFontSize = 6,
-    tickPosition = 'outside',
+    tickPosition = 'inside',
+    tickStartAngle = 0,
+    tickEndAngle = 360,
+    tickStep = 10,
+    tickColor = '#000000',
+    tickLineLength = 8,
+    tickLabel = true,
+    tickLabelList = [],
+    tickLabelFontSize = 6,
   } = props;
   const dialBackgroundColor = dialOutLineColor
     ? { backgroundColor: dialOutLineColor }
@@ -39,7 +54,6 @@ export const DialControl: React.FC<DialControlProps> = (
   const [componentX, setComponentX] = useState(0);
   const [componentY, setComponentY] = useState(0);
   const tickRadius = (dialSize - 40) / 2; // 目盛りの位置の半径
-  const tickLength = 8; // 目盛りの長さ
   const center = dialSize / 2; // 円の中心座標
   const pointSize = 6;
 
@@ -73,7 +87,7 @@ export const DialControl: React.FC<DialControlProps> = (
         const distance = Math.sqrt(powerX + powerY);
         var rotationAmount = distance / 1.15; // 調整可能な移動距離に応じて調整
 
-        // 回転の方向（移動の位置と移動の向きから決定）
+        // 回転の方向（移動開始位置と移動の向きから決定）
         let isRightTurn = true;
         if (isUpsideAreaStart) {
           if (isLeftsideAreaStart) {
@@ -112,11 +126,11 @@ export const DialControl: React.FC<DialControlProps> = (
 
         Animated.timing(rotateValue, {
           duration: 0,
-          toValue: snapToTicks
-            ? Math.round(totalRotateValue / 10) * 10
-            : totalRotateValue,
+          toValue: calcRotateValue(),
           useNativeDriver: true,
         }).start();
+
+        props.onChange && props.onChange(calcRotateValue());
       }
 
       setPreviousMoveY(componetMoveY);
@@ -126,16 +140,16 @@ export const DialControl: React.FC<DialControlProps> = (
     onPanResponderRelease: () => {
       setPreviousMoveY(null);
       setPreviousMoveX(null);
-      props.onChange &&
-        props.onChange(
-          snapToTicks
-            ? Math.round(totalRotateValue / 10) * 10
-            : totalRotateValue
-        );
+      props.onRelease && props.onRelease(calcRotateValue());
     },
     onStartShouldSetPanResponder: () => true,
   });
 
+  const calcRotateValue = function () {
+    return snapToTicks
+      ? Math.round(totalRotateValue / 10) * 10
+      : totalRotateValue;
+  };
   const rotateInterpolate = rotateValue.interpolate({
     inputRange: [-45, 45],
     outputRange: ['-45deg', '45deg'],
@@ -152,57 +166,73 @@ export const DialControl: React.FC<DialControlProps> = (
   // 円の外側に目盛りを描画する関数
   const renderTicks = useMemo(() => {
     const ticks = [];
-    for (let angle = 0; angle <= 350; angle += 10) {
-      const radians = angle * (Math.PI / 180);
-      const tickPosValue = tickPosition == 'inside' ? tickLength : -tickLength;
+    let labelIndex = 0;
+    for (let angle = 0; angle < 360; angle += tickStep) {
+      if (tickStartAngle < tickEndAngle) {
+        if (angle < tickStartAngle || tickEndAngle < angle) continue;
+      } else {
+        if (!(angle < tickEndAngle || tickStartAngle < angle)) continue;
+      }
+
+      const radians = (angle - 90) * (Math.PI / 180);
+      const tickLinePosValue =
+        tickPosition == 'inside' ? tickLineLength : -tickLineLength;
+
+      // 線
       const x1 = center + tickRadius * Math.cos(radians);
       const y1 = center + tickRadius * Math.sin(radians);
-      const x2 = center + (tickRadius - tickPosValue) * Math.cos(radians);
-      const y2 = center + (tickRadius - tickPosValue) * Math.sin(radians);
+      const x2 = center + (tickRadius - tickLinePosValue) * Math.cos(radians);
+      const y2 = center + (tickRadius - tickLinePosValue) * Math.sin(radians);
       ticks.push(
         <Line
-          key={angle}
+          key={'line' + angle}
           x1={x1}
           y1={y1}
           x2={x2}
           y2={y2}
-          stroke="black"
+          stroke={tickColor}
           strokeWidth={0.5}
         />
       );
+
+      // ラベル
+      if (tickLabel) {
+        const tickLabelPosValue =
+          tickRadius -
+          tickLineLength +
+          (tickPosition == 'inside'
+            ? -tickLabelFontSize
+            : tickLabelFontSize + 16);
+        const labelX = center + tickLabelPosValue * Math.cos(radians);
+        const labelY = center + tickLabelPosValue * Math.sin(radians) + 2;
+
+        let label = '';
+        if (tickLabelList && tickLabelList.length > 0) {
+          if (labelIndex < tickLabelList.length) {
+            label = tickLabelList[labelIndex];
+          }
+        } else {
+          label = `${angle % 360}`;
+        }
+        ticks.push(
+          <SvgText
+            key={'label' + angle}
+            x={labelX}
+            y={labelY}
+            fill={tickColor}
+            textAnchor="middle"
+            fontSize={tickLabelFontSize}
+          >
+            {label}
+          </SvgText>
+        );
+        labelIndex++;
+      }
     }
     return ticks;
-  }, [center, tickPosition, tickRadius]);
+  }, [center, tickLabelFontSize, tickPosition, tickRadius]);
 
-  // 目盛りの数値を描画する関数
-  const renderTickLabels = useMemo(() => {
-    const labels = [];
-    const startRadians = 90;
-    const tickPosValue =
-      tickPosition == 'inside' ? -tickFontSize : tickFontSize + 16;
-    for (let angle = 0; angle <= 350; angle += 10) {
-      const radians = angle * (Math.PI / 180);
-      const x =
-        center + (tickRadius - tickLength + tickPosValue) * Math.cos(radians);
-      const y =
-        center + (tickRadius - tickLength + tickPosValue) * Math.sin(radians);
-      labels.push(
-        <SvgText
-          key={angle}
-          x={x}
-          y={y + 2}
-          fill="black"
-          textAnchor="middle"
-          fontSize={tickFontSize}
-        >
-          {(angle + startRadians) % 360}
-        </SvgText>
-      );
-    }
-    return labels;
-  }, [center, tickFontSize, tickPosition, tickRadius]);
-
-  //const trianglePoints = "100, 20, 105,30 95,30";
+  // point位置
   const tipY = center - tickRadius;
   const trianglePoints = `${center}, ${tipY}, ${center + 5},${tipY + 10}  ${
     center - 5
@@ -241,7 +271,6 @@ export const DialControl: React.FC<DialControlProps> = (
           stroke="black"
         />
         {renderTicks}
-        {renderTickLabels}
       </Svg>
     </View>
   );
