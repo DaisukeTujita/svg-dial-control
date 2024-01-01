@@ -209,7 +209,7 @@ export const DialControl: React.FC<DialControlProps> = (
         let label = '';
         if (tickLabelList && tickLabelList.length > 0) {
           if (labelIndex < tickLabelList.length) {
-            label = tickLabelList[labelIndex];
+            label = tickLabelList[labelIndex] ?? '';
           }
         } else {
           label = `${angle % 360}`;
