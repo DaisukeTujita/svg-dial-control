@@ -1,4 +1,10 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, {
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
 
@@ -20,6 +26,10 @@ export type DialControlProps = {
   tickLabel?: boolean;
   tickLabelList?: string[];
   tickLabelFontSize?: number;
+  motionRange?: 'inTicks';
+  motionSpeed?: number;
+  initalRotateValue?: number;
+  children?: ReactNode;
 };
 
 export const DialControl: React.FC<DialControlProps> = (
@@ -40,6 +50,10 @@ export const DialControl: React.FC<DialControlProps> = (
     tickLabel = true,
     tickLabelList = [],
     tickLabelFontSize = 6,
+    motionRange,
+    motionSpeed = 10,
+    initalRotateValue = 0,
+    children,
   } = props;
   const dialBackgroundColor = dialOutLineColor
     ? { backgroundColor: dialOutLineColor }
@@ -56,6 +70,15 @@ export const DialControl: React.FC<DialControlProps> = (
   const tickRadius = (dialSize - 40) / 2; // 目盛りの位置の半径
   const center = dialSize / 2; // 円の中心座標
   const pointSize = 6;
+
+  useEffect(() => {
+    totalRotateValue = initalRotateValue;
+    Animated.timing(rotateValue, {
+      duration: 0,
+      toValue: totalRotateValue,
+      useNativeDriver: true,
+    }).start();
+  }, [initalRotateValue]);
 
   const onLayout = (event: any) => {
     const { height, width, x, y } = event.nativeEvent.layout;
@@ -85,7 +108,7 @@ export const DialControl: React.FC<DialControlProps> = (
         const powerX = diffX * diffX;
         const powerY = diffY * diffY;
         const distance = Math.sqrt(powerX + powerY);
-        var rotationAmount = distance / 1.15; // 調整可能な移動距離に応じて調整
+        var rotationAmount = (distance * motionSpeed) / 11.5; // 調整可能な移動距離に応じて調整
 
         // 回転の方向（移動開始位置と移動の向きから決定）
         let isRightTurn = true;
@@ -146,8 +169,27 @@ export const DialControl: React.FC<DialControlProps> = (
   });
 
   const calcRotateValue = function () {
+    if (motionRange == 'inTicks') {
+      if (tickStartAngle < tickEndAngle) {
+        if (totalRotateValue < tickStartAngle) {
+          totalRotateValue = tickStartAngle;
+        } else if (tickEndAngle < totalRotateValue) {
+          totalRotateValue = tickEndAngle;
+        }
+      } else {
+        if (
+          totalRotateValue < tickStartAngle &&
+          tickEndAngle < totalRotateValue
+        ) {
+          totalRotateValue =
+            tickStartAngle - totalRotateValue < totalRotateValue - tickEndAngle
+              ? tickStartAngle
+              : tickEndAngle;
+        }
+      }
+    }
     return snapToTicks
-      ? Math.round(totalRotateValue / 10) * 10
+      ? Math.round(totalRotateValue / tickStep) * tickStep
       : totalRotateValue;
   };
   const rotateInterpolate = rotateValue.interpolate({
@@ -171,7 +213,7 @@ export const DialControl: React.FC<DialControlProps> = (
       if (tickStartAngle < tickEndAngle) {
         if (angle < tickStartAngle || tickEndAngle < angle) continue;
       } else {
-        if (!(angle < tickEndAngle || tickStartAngle < angle)) continue;
+        if (!(angle <= tickEndAngle || tickStartAngle <= angle)) continue;
       }
 
       const radians = (angle - 90) * (Math.PI / 180);
@@ -256,6 +298,7 @@ export const DialControl: React.FC<DialControlProps> = (
           {pointMark == 'circle' && (
             <Circle cx={center} cy={tipY + 15} r={pointSize} fill="black" />
           )}
+          {children}
         </Svg>
       </Animated.View>
       <Svg
