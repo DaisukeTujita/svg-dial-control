@@ -15,7 +15,7 @@ export type DialControlProps = {
   dialSize?: number;
   onChange?: (rotateValue: number) => void;
   onRelease?: (rotateValue: number) => void;
-  pointMark?: 'triangle' | 'circle';
+  pointMark?: 'triangle' | 'circle' | 'none';
   snapToTicks?: boolean;
   tickPosition?: 'inside' | 'outside';
   tickStartAngle?: number;
@@ -188,6 +188,7 @@ export const DialControl: React.FC<DialControlProps> = (
         }
       }
     }
+
     return snapToTicks
       ? Math.round(totalRotateValue / tickStep) * tickStep
       : totalRotateValue;
@@ -209,7 +210,12 @@ export const DialControl: React.FC<DialControlProps> = (
   const renderTicks = useMemo(() => {
     const ticks = [];
     let labelIndex = 0;
-    for (let angle = 0; angle < 360; angle += tickStep) {
+    for (
+      let loopAngle = tickStartAngle;
+      loopAngle < 360 + tickStartAngle;
+      loopAngle += tickStep
+    ) {
+      let angle = loopAngle % 360;
       if (tickStartAngle < tickEndAngle) {
         if (angle < tickStartAngle || tickEndAngle < angle) continue;
       } else {
