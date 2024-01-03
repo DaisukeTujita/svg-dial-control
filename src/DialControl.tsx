@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useCallback,
 } from 'react';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
@@ -67,6 +68,7 @@ export const DialControl: React.FC<DialControlProps> = (
   const [componentHeight, setComponentHeight] = useState(0);
   const [componentX, setComponentX] = useState(0);
   const [componentY, setComponentY] = useState(0);
+  const [tickAngles, setTickAngles] = useState<number[]>([]);
   const tickRadius = (dialSize - 40) / 2; // 目盛りの位置の半径
   const center = dialSize / 2; // 円の中心座標
   const pointSize = 6;
@@ -147,13 +149,15 @@ export const DialControl: React.FC<DialControlProps> = (
           }
         }
 
+        totalRotateValue = calcRotateValue(totalRotateValue);
+        let currectRotateValue = snapRotateValue(totalRotateValue);
         Animated.timing(rotateValue, {
           duration: 0,
-          toValue: calcRotateValue(),
+          toValue: currectRotateValue,
           useNativeDriver: true,
         }).start();
 
-        props.onChange && props.onChange(calcRotateValue());
+        props.onChange && props.onChange(currectRotateValue);
       }
 
       setPreviousMoveY(componetMoveY);
@@ -163,36 +167,58 @@ export const DialControl: React.FC<DialControlProps> = (
     onPanResponderRelease: () => {
       setPreviousMoveY(null);
       setPreviousMoveX(null);
-      props.onRelease && props.onRelease(calcRotateValue());
+      totalRotateValue = calcRotateValue(totalRotateValue);
+      let currectRotateValue = snapRotateValue(totalRotateValue);
+      props.onRelease && props.onRelease(currectRotateValue);
     },
     onStartShouldSetPanResponder: () => true,
   });
 
-  const calcRotateValue = function () {
-    if (motionRange == 'inTicks') {
-      if (tickStartAngle < tickEndAngle) {
-        if (totalRotateValue < tickStartAngle) {
-          totalRotateValue = tickStartAngle;
-        } else if (tickEndAngle < totalRotateValue) {
-          totalRotateValue = tickEndAngle;
-        }
-      } else {
-        if (
-          totalRotateValue < tickStartAngle &&
-          tickEndAngle < totalRotateValue
-        ) {
-          totalRotateValue =
-            tickStartAngle - totalRotateValue < totalRotateValue - tickEndAngle
-              ? tickStartAngle
-              : tickEndAngle;
+  // motionRange
+  const calcRotateValue = useCallback(
+    (rotateValue: number) => {
+      if (motionRange == 'inTicks') {
+        if (tickStartAngle < tickEndAngle) {
+          if (rotateValue < tickStartAngle) {
+            return tickStartAngle;
+          } else if (tickEndAngle < rotateValue) {
+            return tickEndAngle;
+          }
+        } else {
+          if (rotateValue < tickStartAngle && tickEndAngle < rotateValue) {
+            if (tickStartAngle - rotateValue < rotateValue - tickEndAngle) {
+              return tickStartAngle;
+            } else {
+              return tickEndAngle;
+            }
+          }
         }
       }
-    }
+      return rotateValue;
+    },
+    [motionRange, tickStartAngle, tickEndAngle, tickAngles]
+  );
 
-    return snapToTicks
-      ? Math.round(totalRotateValue / tickStep) * tickStep
-      : totalRotateValue;
-  };
+  // snapToTicks
+  const snapRotateValue = useCallback(
+    (rotateValue: number) => {
+      if (!snapToTicks || !tickAngles || tickAngles.length <= 0)
+        return rotateValue;
+      if (rotateValue == tickStartAngle || rotateValue == tickEndAngle)
+        return rotateValue;
+
+      for (let i = 0; i < tickAngles.length; i++) {
+        let checkAngle = tickAngles[i] ?? tickStartAngle;
+        const diff = Math.abs((rotateValue - checkAngle) % 180);
+        if (diff <= tickStep / 2) {
+          return checkAngle;
+        }
+      }
+      return rotateValue;
+    },
+    [tickStartAngle, tickEndAngle, tickAngles, tickStep]
+  );
+
   const rotateInterpolate = rotateValue.interpolate({
     inputRange: [-45, 45],
     outputRange: ['-45deg', '45deg'],
@@ -210,6 +236,7 @@ export const DialControl: React.FC<DialControlProps> = (
   const renderTicks = useMemo(() => {
     const ticks = [];
     let labelIndex = 0;
+    let newTickAngles: number[] = [];
     for (
       let loopAngle = tickStartAngle;
       loopAngle < 360 + tickStartAngle;
@@ -223,6 +250,7 @@ export const DialControl: React.FC<DialControlProps> = (
       }
 
       const radians = (angle - 90) * (Math.PI / 180);
+      newTickAngles = [...newTickAngles, angle];
       const tickLinePosValue =
         tickPosition == 'inside' ? tickLineLength : -tickLineLength;
 
@@ -277,6 +305,7 @@ export const DialControl: React.FC<DialControlProps> = (
         labelIndex++;
       }
     }
+    setTickAngles(newTickAngles);
     return ticks;
   }, [center, tickLabelFontSize, tickPosition, tickRadius]);
 

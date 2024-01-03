@@ -53,9 +53,9 @@ export default function App() {
         onChange={(val) => console.log(val)}
         tickStartAngle={300}
         tickEndAngle={60}
-        tickStep={30}
+        tickStep={40}
         tickPosition="outside"
-        tickLabelList={["OFF", "1", "2", "3", "4"]}
+        tickLabelList={["OFF", "low", "mid", "high"]}
         motionRange="inTicks"
         motionSpeed={6}
         pointMark="none"
